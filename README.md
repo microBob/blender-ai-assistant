@@ -1,1 +1,1 @@
-# amd-pervasive-ai
+# AMD Persavise AI

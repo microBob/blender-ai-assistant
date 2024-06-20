@@ -1,0 +1,38 @@
+Numerical Stroop - measuring reaction times to incongruent stimuli
+==================================================================
+
+
+
+The experiment
+--------------------
+
+The numerical Stroop (Henik and Tzelgov, 1982) is a variant of the classic Stroop task (Stroop, 1935).
+
+In the numerical Stroop, participants must select the greater number in semantic trials, 
+while ignoring the actual size of the numbers and in the physical trials they have to choose
+the physically larger number, while ignoring the actual value of the numbers.
+
+Data Analysis
+--------------------
+
+
+Data can be found in the data folder next to where the
+ experiment was saved. 
+After analysing the mean reaction time for congruent and incongruent physical and semantic trials,
+typically, the 
+incongruent conditions will have larger reactions times.
+
+
+
+Notes
+--------------------
+
+
+This is a close replication of Henik and Tzelgov (1982), however letter height is larger. 
+
+
+References
+--------------------
+
+Henik, A., & Tzelgov, J. (1982). Is three greater than five: The relation between physical and semantic size in comparison tasks. Memory & cognition, 10(4), 389-395.
+Stroop, J. R. (1935). Studies of interference in serial verbal reactions. Journal of Experimental Psychology, 18(6), 643-662.

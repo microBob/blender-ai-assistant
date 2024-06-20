@@ -1,0 +1,31 @@
+Posner Cueing Paradigm (Posner, 1980)
+-------------------------------------
+
+The Posner cueing paradigm is a neuropsychological test used to assess attention.
+Specifically, the task will measure the effects of covert attention, when you attend
+to a particular location on the screen without moving your eyes to it. 
+
+In this task, the participant must respond as quickly as possible to the presentation of a
+stimulus (we'll use a simple filled circle) that appears on the left or right of the screen.
+Before the target is presented we show a cue (a triangle) that points to the left or the right.
+Most of the time the cue will point to the correct location so you attention will naturally
+shift to that location, in expectation of seeing the target appear there. On occassional trials,
+however, the cue will point to the incorrect location; the target will appear on the wrong side
+and the participant will not benefit from the advantage of having attention there.
+
+We measure the effect of attention by looking at the speed of response time to the target.
+In general, participants respond faster to targets following spatially congruent cues than
+spatially incongruent cues (Posner, 1980). 
+
+See Page 59 of Building Experiments in PsychoPy (Peirce & MacAskill, 2018)
+for more information on building Posner Cueing tasks in PsychoPy.
+
+Analysis
+--------
+
+This task can record RTs on a keyboard and mouse. The reaction times for keyboard can be found in the column keyPress.rt and the reaction times for mouse can be found in mouse.time.
+
+References
+----------
+Posner, M. I. (1980). Orienting of attention. Quarterly journal of experimental psychology, 32(1), 3-25.
+

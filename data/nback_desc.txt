@@ -1,0 +1,9 @@
+N-Back task
+------------
+
+This is a basic demo of a sequential n-back task. The participant must click the mouse if the current item is the same as "n" back. This can also be used on tablets and phones, a screen touch will be registered in place of a mouse click.
+
+Info for researchers
+---------------------
+
+This demo ranges from 2 to 5 backs and the different n-backs can be selected from the startup dialog box.

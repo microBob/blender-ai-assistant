@@ -17,7 +17,7 @@ class ASSISTANT_PT_Panel(bpy.types.Panel):
     bl_idname = "ASSISTANT_PT_panel"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category = "Ollama API"
+    bl_category = "AI Assistnat"
 
     def draw(self, context):
         layout = self.layout
@@ -70,10 +70,14 @@ class ASSISTANT_OT_Submit(bpy.types.Operator):
             "prompt": prompt,
             "stream": False,
             "system": system,
+            "keep_alive": -1,
         }
 
         try:
             response = requests.post(url, headers=headers, json=data)
+        except requests.RequestException as e:
+            result = f"Request failed: {e}"
+        else:
             if response.status_code == 200:
                 result = response.json().get(
                     "response", "No response field found in API response."
@@ -82,8 +86,13 @@ class ASSISTANT_OT_Submit(bpy.types.Operator):
                 result = f"Error {response.status_code}: {response.text}"
 
             # Extract code fragment.
-            start_of_fragment_index = result.index("```")
-            if start_of_fragment_index >= 0:
+            try:
+                start_of_fragment_index = result.index("```")
+            except ValueError:
+                # Show response if no code.
+                context.scene.assistant_props.is_generating = False
+                context.scene.assistant_props.output_text = result
+            else:
                 end_of_fragment_index = (
                     result[start_of_fragment_index + 3 :].index("```")
                     + start_of_fragment_index
@@ -93,32 +102,25 @@ class ASSISTANT_OT_Submit(bpy.types.Operator):
 
                 # Try to run the command
                 try:
-                    exec(code)
+                    exec("asdf")
                 except Exception:
                     # Get the error and request a fix.
                     error = traceback.format_exc()
+                    print(error)
 
                     # Run the request in a separate thread
-                    thread = threading.Thread(
-                        target=self.send_request,
-                        args=(
-                            f"Command: {context.scene.assistant_props.input_text}\nError: {error}",
-                            "You are a programming assistant for Blender 3D's Python API. I will give you a Blender Python command and the associated error it produced. Fix the command with the correct Blender Python code and place it between three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why.",
-                            context,
-                        ),
-                    )
-                    thread.start()
+                    # thread = threading.Thread(
+                    #     target=self.send_request,
+                    #     args=(
+                    #         f"Command: {context.scene.assistant_props.input_text}\nError: {error}",
+                    #         "You are a programming assistant for Blender 3D's Python API. I will give you a Blender Python command and the associated error it produced. Fix the command with the correct Blender Python code and place it between three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why.",
+                    #         context,
+                    #     ),
+                    # )
+                    # thread.start()
                 else:
-                    # Complete generation.
+                    # On successful exec.
                     context.scene.assistant_props.is_generating = False
-            else:
-                context.scene.assistant_props.output_text = result
-        except requests.RequestException as e:
-            result = f"Request failed: {e}"
-
-        # bpy.app.driver_namespace['update_output_text'] = update_output_text
-        # bpy.app.timers.register(bpy.app.driver_namespace['update_output_text'])
-
 
 class ASSISTANT_Props(bpy.types.PropertyGroup):
     input_text: bpy.props.StringProperty(

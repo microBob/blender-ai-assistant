@@ -1,21 +1,23 @@
 bl_info = {
     "name": "AI Assistant",
-    "author" : "Kenneth Y (Microbob)",
+    "author": "Kenneth Y (Microbob)",
     "blender": (2, 80, 0),
-    "version" : (0, 0, 1),
+    "version": (0, 0, 1),
     "category": "3D View",
 }
 
 import bpy
 import requests
 import threading
+import traceback
+
 
 class ASSISTANT_PT_Panel(bpy.types.Panel):
     bl_label = "AI Assistant"
     bl_idname = "ASSISTANT_PT_panel"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'Ollama API'
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Ollama API"
 
     def draw(self, context):
         layout = self.layout
@@ -23,10 +25,15 @@ class ASSISTANT_PT_Panel(bpy.types.Panel):
         assistant_props = scene.assistant_props
 
         layout.prop(assistant_props, "input_text")
-        layout.operator("assistant.submit", text="Generating" if assistant_props.is_generating else "Submit", emboss=not assistant_props.is_generating)
+        layout.operator(
+            "assistant.submit",
+            text="Generating" if assistant_props.is_generating else "Submit",
+            emboss=not assistant_props.is_generating,
+        )
         layout.label(text="Response:")
-        for line in assistant_props.output_text.split('\n'):
+        for line in assistant_props.output_text.split("\n"):
             layout.label(text=line)
+
 
 class ASSISTANT_OT_Submit(bpy.types.Operator):
     bl_idname = "assistant.submit"
@@ -38,58 +45,94 @@ class ASSISTANT_OT_Submit(bpy.types.Operator):
 
         # Skip if already generating.
         if assistant_props.is_generating:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         assistant_props.is_generating = True
 
         # Run the request in a separate thread
-        thread = threading.Thread(target=self.send_request, args=(assistant_props.input_text, context))
+        thread = threading.Thread(
+            target=self.send_request,
+            args=(
+                assistant_props.input_text,
+                "You are a programming assistant for Blender 3D's Python API. I will ask you to perform actions in Blender and you will respond with the corresponding Blender Python commands surrounded by three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why.",
+                context,
+            ),
+        )
         thread.start()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
-    def send_request(self, prompt, context):
+    def send_request(self, prompt, system, context):
         url = "http://localhost:11434/api/generate"
-        headers = {
-            "Content-Type": "application/json"
-        }
+        headers = {"Content-Type": "application/json"}
         data = {
             "model": "llama3:70b",
             "prompt": prompt,
             "stream": False,
-            "system": "You are a programming assistant for Blender 3D's Python API. I will ask you to perform actions in Blender and you will respond with the corresponding Blender Python commands surrounded by three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible`. If my question is not related to Blender, respond with `not possible`."
+            "system": system,
         }
 
         try:
             response = requests.post(url, headers=headers, json=data)
             if response.status_code == 200:
-                result = response.json().get("response", "No response field found in API response.")
-                context.scene.assistant_props.output_text = result
-                context.scene.assistant_props.is_generating = False
+                result = response.json().get(
+                    "response", "No response field found in API response."
+                )
             else:
                 result = f"Error {response.status_code}: {response.text}"
+
+            # Extract code fragment.
+            start_of_fragment_index = result.index("```")
+            if start_of_fragment_index >= 0:
+                end_of_fragment_index = (
+                    result[start_of_fragment_index + 3 :].index("```")
+                    + start_of_fragment_index
+                    + 3
+                )
+                code = result[start_of_fragment_index + 3 : end_of_fragment_index]
+
+                # Try to run the command
+                try:
+                    exec(code)
+                except Exception:
+                    # Get the error and request a fix.
+                    error = traceback.format_exc()
+
+                    # Run the request in a separate thread
+                    thread = threading.Thread(
+                        target=self.send_request,
+                        args=(
+                            f"Command: {context.scene.assistant_props.input_text}\nError: {error}",
+                            "You are a programming assistant for Blender 3D's Python API. I will give you a Blender Python command and the associated error it produced. Fix the command with the correct Blender Python code and place it between three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why.",
+                            context,
+                        ),
+                    )
+                    thread.start()
+                else:
+                    # Complete generation.
+                    context.scene.assistant_props.is_generating = False
+            else:
+                context.scene.assistant_props.output_text = result
         except requests.RequestException as e:
             result = f"Request failed: {e}"
 
         # bpy.app.driver_namespace['update_output_text'] = update_output_text
         # bpy.app.timers.register(bpy.app.driver_namespace['update_output_text'])
 
+
 class ASSISTANT_Props(bpy.types.PropertyGroup):
     input_text: bpy.props.StringProperty(
-        name="Input Text",
-        description="Describe what you'd like to do",
-        default=""
+        name="Input Text", description="Describe what you'd like to do", default=""
     )
     output_text: bpy.props.StringProperty(
-        name="Output Text",
-        description="Response from the assistant",
-        default=""
+        name="Output Text", description="Response from the assistant", default=""
     )
     is_generating: bpy.props.BoolProperty(
         name="Is Generating",
         description="Indicates whether the assistant is generating a response",
-        default=False
+        default=False,
     )
+
 
 def register():
     bpy.utils.register_class(ASSISTANT_PT_Panel)
@@ -97,11 +140,13 @@ def register():
     bpy.utils.register_class(ASSISTANT_Props)
     bpy.types.Scene.assistant_props = bpy.props.PointerProperty(type=ASSISTANT_Props)
 
+
 def unregister():
     bpy.utils.unregister_class(ASSISTANT_PT_Panel)
     bpy.utils.unregister_class(ASSISTANT_OT_Submit)
     bpy.utils.unregister_class(ASSISTANT_Props)
     del bpy.types.Scene.assistant_props
+
 
 if __name__ == "__main__":
     register()

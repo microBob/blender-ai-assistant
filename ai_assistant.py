@@ -47,7 +47,6 @@ def send_request(prompt, system, flag, recurse_count=0):
         "prompt": prompt,
         "stream": False,
         "system": system,
-        "keep_alive": -1,
     }
 
     global result

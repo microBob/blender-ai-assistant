@@ -39,7 +39,7 @@ class ASSISTANT_PT_Panel(bpy.types.Panel):
             layout.label(text=line)
 
 
-def send_request(prompt, system, flag):
+def send_request(prompt, system, flag, recurse_count=0):
     url = "http://localhost:11434/api/generate"
     headers = {"Content-Type": "application/json"}
     data = {
@@ -81,6 +81,7 @@ def send_request(prompt, system, flag):
                 + 3
             )
             code = result[start_of_fragment_index + 3 : end_of_fragment_index]
+            result = code
 
             # Try to run the command
             try:
@@ -88,13 +89,19 @@ def send_request(prompt, system, flag):
             except Exception:
                 # Get the error and request a fix.
                 error = traceback.format_exc()
-                print(error)
+
+                # Stop trying after a few times (avoid infinite recursion).
+                if recurse_count > 3:
+                    result = error
+                    flag.set()
+                    return
 
                 # Recurse with new prompt and setup.
                 send_request(
                     f"Command: {prompt}\nError: {error}",
                     "You are a programming assistant for Blender 3D's Python API. I will give you a Blender Python command and the associated error it produced. Fix the command with the correct Blender Python code and place it between three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why.",
                     flag,
+                    recurse_count + 1
                 )
             else:
                 # On successful exec.

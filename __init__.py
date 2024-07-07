@@ -94,15 +94,14 @@ def send_request(prompt, system, flag, recurse_count=0):
                 if recurse_count > 3:
                     result = error
                     flag.set()
-                    return
-
-                # Recurse with new prompt and setup.
-                send_request(
-                    f"Command: {prompt}\nError: {error}",
-                    "You are a programming assistant for Blender 3D's Python API. I will give you a Blender Python command and the associated error it produced. Fix the command with the correct Blender Python code and place it between three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why.",
-                    flag,
-                    recurse_count + 1
-                )
+                else:
+                    # Recurse with new prompt and setup.
+                    send_request(
+                        f"Command: {prompt}\nError: {error}",
+                        "You are a programming assistant for Blender 3D's Python API. I will give you a Blender Python command that didn't work and the associated error it produced. Fix the command with the correct Blender Python code and place it between three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why.",
+                        flag,
+                        recurse_count + 1
+                    )
             else:
                 # On successful exec.
                 flag.set()
@@ -122,13 +121,18 @@ class ASSISTANT_OT_Submit(bpy.types.Operator):
 
         assistant_props.is_generating = True
 
+        # Generate object-location dictionary.
+        scene_info = {}
+        for object in scene.objects:
+            scene_info[object.name] = object.location
+
         # Run the request in a separate thread.
         thread_flag = threading.Event()
         thread = threading.Thread(
             target=send_request,
             args=(
                 assistant_props.input_text,
-                "You are a programming assistant for Blender 3D's Python API. I will ask you to perform actions in Blender and you will respond with the corresponding Blender Python commands surrounded by three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why.",
+                "You are a programming assistant for Blender 3D's Python API. I will ask you to perform actions in Blender and you will respond with the corresponding Blender Python commands surrounded by three tick marks like this '```'. Do not explain your answer. No need to import bpy. If a command is not possible, respond with `not possible` and a one sentence description of why. If my question is not related to Blender, respond with `not possible` and a one sentence description of why. Here is a list of objects in the scene and their locations: {scene_info}",
                 thread_flag,
             ),
         )
